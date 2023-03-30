@@ -22,8 +22,8 @@ int getRandom(const int min, const int max) {
 	return rand() % (max - min) - min;
 }
 
-void sleep(int milliseconds) {
-	struct timespec time {
+void _sleep(int milliseconds) {
+	struct timespec time = {
 		milliseconds / 1000,
 		milliseconds % 1000 * 1000000
 	};
@@ -33,45 +33,46 @@ void sleep(int milliseconds) {
 int main() {
 	srand(time(NULL));
 
-	const struct Position gameSize {
+	const struct Position gameSize = {
 		20,
 		20
 	};
 
-	struct Position apple {
+	struct Position apple = {
 		getRandom(0, gameSize.x),
 		getRandom(0, gameSize.y)
 	};
 
 	int bodySize = 1;
-	struct Position body[gameSize.x * gameSize.y] = {
-		{
-			getRandom(0, gameSize.x),
-			getRandom(0, gameSize.y)
-		}
-	};
 
-	struct Position direction {
+	struct Position body[gameSize.x * gameSize.y]; //Initilize like so
+
+	for (int i = 0; i < gameSize.x * gameSize.y; i++) {
+		body[i].x = getRandom(0, gameSize.x);
+		body[i].y = getRandom(0, gameSize.y);
+	}
+
+	struct Position direction = {
 		0,
 		0
 	};
 
-	const struct Color red {
+	const struct Color red = {
 		255,
 		0,
 		0
 	};
-	const struct Color lime {
+	const struct Color lime = {
 		125,
 		255,
 		0
 	};
-	const struct Color green {
+	const struct Color green = {
 		0,
 		255,
 		0
 	};
-	const struct Color azure {
+	const struct Color azure = {
 		0,
 		127,
 		255
@@ -81,7 +82,7 @@ int main() {
 	int inputSize = 1024;
 	char input[inputSize];
 
-	bool running = true;
+	int running = 1;
 
 	struct termios cooked;
 	tcgetattr(STDIN_FILENO, &cooked);
@@ -94,7 +95,7 @@ int main() {
 	printf("\x1b[?47h\x1b[?25l");
 
 	while (running) {
-		const struct Position head {
+		const struct Position head = {
 			(body[0].x + direction.x + gameSize.x) % gameSize.x,
 			(body[0].y + direction.y + gameSize.y) % gameSize.y
 		};
@@ -107,7 +108,7 @@ int main() {
 
 		for (int i = 1; i < bodySize; ++i)
 			if ((head.x == body[i].x) && (head.y == body[i].y)) {
-				running = false;
+				running = 0;
 				break;
 			}
 
@@ -136,7 +137,7 @@ int main() {
 		printf("Use arrow keys to move, press q to quit");
 		fflush(stdout);
 
-		sleep(100);
+		_sleep(100);
 
 		int readCount = 0;
 		do
@@ -146,7 +147,7 @@ int main() {
 		for (int i = 0; i < readCount; ++i) {
 			switch (input[i]) {
 				case 'q':
-					running = false;
+					running = 0;
 					break;
 				case '\x1b':
 					if ((i < readCount - 2) && (input[++i] == '['))
@@ -188,7 +189,7 @@ int main() {
 			break;
 	while (character);
 	fcntl(STDIN_FILENO, F_SETFL, blocking);
-	sleep(1000);
+	_sleep(1000);
 	fgetc(stdin);
 
 	tcsetattr(STDIN_FILENO, TCSANOW, &cooked);
