@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -22,8 +23,8 @@ int getRandom(const int min, const int max) {
 	return rand() % (max - min) - min;
 }
 
-void sleep(int milliseconds) {
-	struct timespec time {
+void sleepMilliseconds(int milliseconds) {
+	struct timespec time = {
 		milliseconds / 1000,
 		milliseconds % 1000 * 1000000
 	};
@@ -33,52 +34,53 @@ void sleep(int milliseconds) {
 int main() {
 	srand(time(NULL));
 
-	const struct Position gameSize {
+	const struct Position gameSize = {
 		20,
 		20
 	};
 
-	struct Position apple {
+	struct Position apple = {
 		getRandom(0, gameSize.x),
 		getRandom(0, gameSize.y)
 	};
 
 	int bodySize = 1;
-	struct Position body[gameSize.x * gameSize.y] = {
-		{
-			getRandom(0, gameSize.x),
-			getRandom(0, gameSize.y)
-		}
-	};
+	struct Position body[gameSize.x * gameSize.y];
+	memset(body, 0, sizeof(struct Position) * gameSize.x * gameSize.y);
 
-	struct Position direction {
+	body[0].x = getRandom(0, gameSize.x);
+	body[0].y = getRandom(0, gameSize.y);
+
+	struct Position head;
+
+	struct Position direction = {
 		0,
 		0
 	};
 
-	const struct Color red {
+	const struct Color red = {
 		255,
 		0,
 		0
 	};
-	const struct Color lime {
+	const struct Color lime = {
 		125,
 		255,
 		0
 	};
-	const struct Color green {
+	const struct Color green = {
 		0,
 		255,
 		0
 	};
-	const struct Color azure {
+	const struct Color azure = {
 		0,
 		127,
 		255
 	};
 	struct Color canvas[gameSize.x][gameSize.y];
 
-	int inputSize = 1024;
+	const int inputSize = 1024;
 	char input[inputSize];
 
 	bool running = true;
@@ -94,10 +96,8 @@ int main() {
 	printf("\x1b[?47h\x1b[?25l");
 
 	while (running) {
-		const struct Position head {
-			(body[0].x + direction.x + gameSize.x) % gameSize.x,
-			(body[0].y + direction.y + gameSize.y) % gameSize.y
-		};
+		head.x = (body[0].x + direction.x + gameSize.x) % gameSize.x;
+		head.y = (body[0].y + direction.y + gameSize.y) % gameSize.y;
 
 		if ((head.x == apple.x) && (head.y == apple.y)) {
 			apple.x = getRandom(0, gameSize.x);
@@ -136,7 +136,7 @@ int main() {
 		printf("Use arrow keys to move, press q to quit");
 		fflush(stdout);
 
-		sleep(100);
+		sleepMilliseconds(100);
 
 		int readCount = 0;
 		do
@@ -188,7 +188,7 @@ int main() {
 			break;
 	while (character);
 	fcntl(STDIN_FILENO, F_SETFL, blocking);
-	sleep(1000);
+	sleepMilliseconds(1000);
 	fgetc(stdin);
 
 	tcsetattr(STDIN_FILENO, TCSANOW, &cooked);
