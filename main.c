@@ -46,8 +46,6 @@ int main() {
 
 	int bodySize = 1;
 	struct Position body[gameSize.x * gameSize.y];
-	memset(body, 0, sizeof(struct Position) * gameSize.x * gameSize.y);
-
 	body[0].x = getRandom(0, gameSize.x);
 	body[0].y = getRandom(0, gameSize.y);
 
