@@ -62,7 +62,7 @@ int main() {
 		0
 	};
 	const struct Color lime = {
-		125,
+		127,
 		255,
 		0
 	};
