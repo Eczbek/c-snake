@@ -131,7 +131,7 @@ int main() {
 		for (int y = gameSize.y; y--;) {
 			for (int x = 0; x < gameSize.x; ++x)
 				printf("\x1b[48;2;%u;%u;%um  ", canvas[x][y].red, canvas[x][y].green, canvas[x][y].blue);
-			printf("\x1b[48m\n\r");
+			printf("\x1b[0m\n\r");
 		}
 		printf("Use arrow keys to move, press q to quit");
 		fflush(stdout);
@@ -182,13 +182,13 @@ int main() {
 
 	printf("\x1b[2K\x1b[0GPress any key to exit");
 	fflush(stdout);
+	sleepMilliseconds(1000);
 	char character = 0;
 	do
 		if (read(STDIN_FILENO, &character, 1) == -1)
 			break;
 	while (character);
 	fcntl(STDIN_FILENO, F_SETFL, blocking);
-	sleepMilliseconds(1000);
 	fgetc(stdin);
 
 	tcsetattr(STDIN_FILENO, TCSANOW, &cooked);
