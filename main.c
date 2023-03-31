@@ -51,10 +51,11 @@ int main() {
 
 	struct Position head;
 
-	struct Position direction = {
+	struct Position currentDirection = {
 		0,
 		0
 	};
+	struct Position newDirection;
 
 	const struct Color red = {
 		255,
@@ -94,8 +95,8 @@ int main() {
 	printf("\x1b[?47h\x1b[?25l");
 
 	while (running) {
-		head.x = (body[0].x + direction.x + gameSize.x) % gameSize.x;
-		head.y = (body[0].y + direction.y + gameSize.y) % gameSize.y;
+		head.x = (body[0].x + currentDirection.x + gameSize.x) % gameSize.x;
+		head.y = (body[0].y + currentDirection.y + gameSize.y) % gameSize.y;
 
 		if ((head.x == apple.x) && (head.y == apple.y)) {
 			apple.x = getRandom(0, gameSize.x);
@@ -103,7 +104,7 @@ int main() {
 		} else
 			--bodySize;
 
-		for (int i = 1; i < bodySize; ++i)
+		for (int i = 3; i < bodySize; ++i)
 			if ((head.x == body[i].x) && (head.y == body[i].y)) {
 				running = false;
 				break;
@@ -136,6 +137,7 @@ int main() {
 
 		sleepMilliseconds(100);
 
+		newDirection = currentDirection;
 		int readCount = 0;
 		do
 			if (read(STDIN_FILENO, &input[readCount], 1) == -1)
@@ -150,32 +152,33 @@ int main() {
 					if ((i < readCount - 2) && (input[++i] == '['))
 						switch (input[++i]) {
 							case 'A':
-								if (!direction.y) {
-									direction.x = 0;
-									direction.y = 1;
+								if (!currentDirection.y || (bodySize == 1)) {
+									newDirection.x = 0;
+									newDirection.y = 1;
 								}
 								break;
 							case 'B':
-								if (!direction.y) {
-									direction.x = 0;
-									direction.y = -1;
+								if (!currentDirection.y || (bodySize == 1)) {
+									newDirection.x = 0;
+									newDirection.y = -1;
 								}
 								break;
 							case 'C':
-								if (!direction.x) {
-									direction.x = 1;
-									direction.y = 0;
+								if (!currentDirection.x || (bodySize == 1)) {
+									newDirection.x = 1;
+									newDirection.y = 0;
 								}
 								break;
 							case 'D':
-								if (!direction.x) {
-									direction.x = -1;
-									direction.y = 0;
+								if (!currentDirection.x || (bodySize == 1)) {
+									newDirection.x = -1;
+									newDirection.y = 0;
 								}
 								break;
 						}
 			}
 		}
+		currentDirection = newDirection;
 	}
 
 	printf("\x1b[2K\x1b[0GPress any key to exit");
