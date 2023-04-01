@@ -35,8 +35,8 @@ int main() {
 	srand(time(NULL));
 
 	const struct Position gameSize = {
-		20,
-		20
+		2,
+		2
 	};
 
 	struct Position apple = {
@@ -134,6 +134,8 @@ int main() {
 		}
 		printf("Use arrow keys to move, press q to quit");
 		fflush(stdout);
+		if (bodySize == gameSize.x * gameSize.y)
+			break;
 
 		sleepMilliseconds(100);
 
@@ -181,7 +183,10 @@ int main() {
 		currentDirection = newDirection;
 	}
 
-	printf("\x1b[2K\x1b[0GPress any key to exit");
+	printf("\x1b[2K\x1b[0G");
+	if (running)
+		printf("You win! ");
+	printf("Press any key to exit");
 	fflush(stdout);
 	sleepMilliseconds(1000);
 	char character = 0;
