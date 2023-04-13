@@ -27,12 +27,12 @@ int getRandom(const int min, const int max) {
 }
 
 void sleepMilliseconds(const int milliseconds) {
-	if (milliseconds < 1)
-		return;
-	struct timespec time;
-	time.tv_sec = milliseconds / 1000;
-	time.tv_nsec = milliseconds % 1000 * 1000000;
-	nanosleep(&time, NULL);
+	if (milliseconds > 0) {
+		struct timespec time;
+		time.tv_sec = milliseconds / 1000;
+		time.tv_nsec = milliseconds % 1000 * 1000000;
+		nanosleep(&time, NULL);
+	}
 }
 
 int main() {
@@ -78,6 +78,10 @@ int main() {
 		127,
 		255
 	};
+	struct Color canvas[gameSize.x][gameSize.y];
+	for (int x = 0; x < gameSize.x; ++x)
+		for (int y = 0; y < gameSize.y; ++y)
+			canvas[x][y] = azure;
 
 	struct termios cooked;
 	tcgetattr(STDIN_FILENO, &cooked);
@@ -98,22 +102,20 @@ int main() {
 		};
 
 		if ((head.x == apple.x) && (head.y == apple.y)) {
+			canvas[apple.x][apple.y] = azure;
 			apple.x = getRandom(0, gameSize.x);
 			apple.y = getRandom(0, gameSize.y);
 			++bodySize;
-		}
-
-		struct Color canvas[gameSize.x][gameSize.y];
-		for (int x = 0; x < gameSize.x; ++x)
-			for (int y = 0; y < gameSize.y; ++y)
-				canvas[x][y] = azure;
+		} else
+			canvas[body[bodySize - 1].x][body[bodySize - 1].y] = azure;
+		
 		for (int i = bodySize - 1; i > 0; --i) {
-			body[i] = body[i - 1];
-			if ((head.x == body[i].x) && (head.y == body[i].y)) {
+			const struct Position part = body[i] = body[i - 1];
+			if ((part.x == head.x) && (part.y == head.y)) {
 				gameOver = true;
 				break;
 			}
-			canvas[body[i].x][body[i].y] = lime;
+			canvas[part.x][part.y] = lime;
 		}
 		body[0] = head;
 		canvas[head.x][head.y] = green;
@@ -147,7 +149,7 @@ int main() {
 					gameOver = true;
 					break;
 				case '\x1b':
-					if ((i < readCount - 2) && (input[++i] == '['))
+					if ((i < (readCount - 2)) && (input[++i] == '['))
 						switch (input[++i]) {
 							case 'A':
 								if (!currentDirection.y || (bodySize < 2)) {
@@ -172,7 +174,6 @@ int main() {
 									newDirection.x = -1;
 									newDirection.y = 0;
 								}
-								break;
 						}
 			}
 		}
@@ -184,8 +185,9 @@ int main() {
 		printf("You win! ");
 	printf("Press any key to exit");
 	fflush(stdout);
+
 	sleepMilliseconds(1000);
-	char character = 0;
+
 	while (read(STDIN_FILENO, NULL, 1) != -1);
 	fcntl(STDIN_FILENO, F_SETFL, blocking);
 	fgetc(stdin);
