@@ -36,6 +36,11 @@ void sleepMilliseconds(const int milliseconds) {
 	}
 }
 
+char readCharacter() {
+	char input;
+	return (read(STDIN_FILENO, &input, 1) > 0) ? input : 0;
+}
+
 int main() {
 	srand(time(NULL));
 
@@ -118,12 +123,11 @@ int main() {
 			}
 			canvas[part.x][part.y] = lime;
 		}
+		if (gameOver)
+			break;
 		body[0] = head;
 		canvas[head.x][head.y] = green;
 		canvas[apple.x][apple.y] = red;
-
-		if (gameOver)
-			break;
 
 		printf("\x1b[2J\x1b[HScore: %i\n\r", bodySize - 1);
 		for (int y = gameSize.y; y--;) {
@@ -137,20 +141,15 @@ int main() {
 			break;
 
 		sleepMilliseconds(100);
-
-		const int inputSize = 1024;
-		char input[inputSize];
-		int readCount = 0;
-		while ((readCount < (inputSize - 1)) && (read(STDIN_FILENO, &input[readCount], 1) != -1) && input[readCount])
-			++readCount;
 		struct Position newDirection = currentDirection;
-		for (int i = 0; i < readCount; ++i) {
-			if ((char)tolower((unsigned char)input[i]) == 'q') {
+		while (true) {
+			const char input = readCharacter();
+			if ((char)tolower((unsigned char)input) == 'q')
 				gameOver = true;
+			if (!input || gameOver)
 				break;
-			}
-			if ((input[i] == '\x1b') && (i < (readCount - 2)) && (input[++i] == '['))
-				switch (input[++i]) {
+			if ((input == '\x1b') && (readCharacter() == '['))
+				switch (readCharacter()) {
 					case 'A':
 						if (!currentDirection.y || (bodySize < 2)) {
 							newDirection.x = 0;
@@ -186,7 +185,6 @@ int main() {
 	fflush(stdout);
 
 	sleepMilliseconds(1000);
-
 	while (read(STDIN_FILENO, NULL, 1) != -1);
 	fcntl(STDIN_FILENO, F_SETFL, blocking);
 	fgetc(stdin);
