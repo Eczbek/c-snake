@@ -8,6 +8,9 @@
 #include <time.h>
 #include <unistd.h>
 
+// Declare `nanosleep` to avoid implicit declaration warning
+int nanosleep(const struct timespec*, struct timespec*);
+
 struct Position {
 	int x;
 	int y;
@@ -23,11 +26,12 @@ int getRandom(const int min, const int max) {
 	return rand() % (max - min) - min;
 }
 
-void sleepMilliseconds(int milliseconds) {
-	struct timespec time = {
-		milliseconds / 1000,
-		milliseconds % 1000 * 1000000
-	};
+void sleepMilliseconds(const int milliseconds) {
+	if (milliseconds < 1)
+		return;
+	struct timespec time;
+	time.tv_sec = milliseconds / 1000;
+	time.tv_nsec = milliseconds % 1000 * 1000000;
 	nanosleep(&time, NULL);
 }
 
@@ -35,8 +39,8 @@ int main() {
 	srand(time(NULL));
 
 	const struct Position gameSize = {
-		2,
-		2
+		20,
+		20
 	};
 
 	struct Position apple = {
@@ -49,13 +53,10 @@ int main() {
 	body[0].x = getRandom(0, gameSize.x);
 	body[0].y = getRandom(0, gameSize.y);
 
-	struct Position head;
-
 	struct Position currentDirection = {
 		0,
 		0
 	};
-	struct Position newDirection;
 
 	const struct Color red = {
 		255,
@@ -77,54 +78,49 @@ int main() {
 		127,
 		255
 	};
-	struct Color canvas[gameSize.x][gameSize.y];
-
-	const int inputSize = 1024;
-	char input[inputSize];
-
-	bool running = true;
 
 	struct termios cooked;
 	tcgetattr(STDIN_FILENO, &cooked);
 	struct termios raw = cooked;
-	cfmakeraw(&raw);
-	raw.c_lflag &= ~(ICANON);
+	raw.c_iflag &= ~(ICRNL | IXON);
+	raw.c_lflag &= ~(ICANON | ECHO | IEXTEN | ISIG);
+	raw.c_oflag &= ~(OPOST);
 	tcsetattr(STDIN_FILENO, TCSANOW, &raw);
-	int blocking = fcntl(STDIN_FILENO, F_GETFL);
+	const int blocking = fcntl(STDIN_FILENO, F_GETFL);
 	fcntl(STDIN_FILENO, F_SETFL, blocking | O_NONBLOCK);
 	printf("\x1b[?47h\x1b[?25l");
 
-	while (running) {
-		head.x = (body[0].x + currentDirection.x + gameSize.x) % gameSize.x;
-		head.y = (body[0].y + currentDirection.y + gameSize.y) % gameSize.y;
+	bool gameOver = false;
+	while (!gameOver) {
+		const struct Position head = {
+			(body[0].x + currentDirection.x + gameSize.x) % gameSize.x,
+			(body[0].y + currentDirection.y + gameSize.y) % gameSize.y
+		};
 
 		if ((head.x == apple.x) && (head.y == apple.y)) {
 			apple.x = getRandom(0, gameSize.x);
 			apple.y = getRandom(0, gameSize.y);
-		} else
-			--bodySize;
+			++bodySize;
+		}
 
-		for (int i = 3; i < bodySize; ++i)
-			if ((head.x == body[i].x) && (head.y == body[i].y)) {
-				running = false;
-				break;
-			}
-
-		if (!running)
-			break;
-
-		for (int i = bodySize; i > 0; --i)
-			body[i] = body[i - 1];
-		body[0] = head;
-		++bodySize;
-
+		struct Color canvas[gameSize.x][gameSize.y];
 		for (int x = 0; x < gameSize.x; ++x)
 			for (int y = 0; y < gameSize.y; ++y)
 				canvas[x][y] = azure;
-		for (int i = 1; i < bodySize; ++i)
+		for (int i = bodySize - 1; i > 0; --i) {
+			body[i] = body[i - 1];
+			if ((head.x == body[i].x) && (head.y == body[i].y)) {
+				gameOver = true;
+				break;
+			}
 			canvas[body[i].x][body[i].y] = lime;
-		canvas[body[0].x][body[0].y] = green;
+		}
+		body[0] = head;
+		canvas[head.x][head.y] = green;
 		canvas[apple.x][apple.y] = red;
+
+		if (gameOver)
+			break;
 
 		printf("\x1b[2J\x1b[HScore: %i\n\r", bodySize - 1);
 		for (int y = gameSize.y; y--;) {
@@ -134,45 +130,45 @@ int main() {
 		}
 		printf("Use arrow keys to move, press q to quit");
 		fflush(stdout);
-		if (bodySize == gameSize.x * gameSize.y)
+		if (bodySize == (gameSize.x * gameSize.y))
 			break;
 
 		sleepMilliseconds(100);
 
-		newDirection = currentDirection;
+		const int inputSize = 1024;
+		char input[inputSize];
 		int readCount = 0;
-		do
-			if (read(STDIN_FILENO, &input[readCount], 1) == -1)
-				break;
-		while ((readCount < inputSize) && input[readCount++]);
+		while ((readCount < (inputSize - 1)) && (read(STDIN_FILENO, &input[readCount], 1) != -1) && input[readCount])
+			++readCount;
+		struct Position newDirection = currentDirection;
 		for (int i = 0; i < readCount; ++i) {
 			switch (input[i]) {
 				case 'q':
-					running = false;
+					gameOver = true;
 					break;
 				case '\x1b':
 					if ((i < readCount - 2) && (input[++i] == '['))
 						switch (input[++i]) {
 							case 'A':
-								if (!currentDirection.y || (bodySize == 1)) {
+								if (!currentDirection.y || (bodySize < 2)) {
 									newDirection.x = 0;
 									newDirection.y = 1;
 								}
 								break;
 							case 'B':
-								if (!currentDirection.y || (bodySize == 1)) {
+								if (!currentDirection.y || (bodySize < 2)) {
 									newDirection.x = 0;
 									newDirection.y = -1;
 								}
 								break;
 							case 'C':
-								if (!currentDirection.x || (bodySize == 1)) {
+								if (!currentDirection.x || (bodySize < 2)) {
 									newDirection.x = 1;
 									newDirection.y = 0;
 								}
 								break;
 							case 'D':
-								if (!currentDirection.x || (bodySize == 1)) {
+								if (!currentDirection.x || (bodySize < 2)) {
 									newDirection.x = -1;
 									newDirection.y = 0;
 								}
@@ -184,21 +180,16 @@ int main() {
 	}
 
 	printf("\x1b[2K\x1b[0G");
-	if (running)
+	if (!gameOver)
 		printf("You win! ");
 	printf("Press any key to exit");
 	fflush(stdout);
 	sleepMilliseconds(1000);
 	char character = 0;
-	do
-		if (read(STDIN_FILENO, &character, 1) == -1)
-			break;
-	while (character);
+	while (read(STDIN_FILENO, NULL, 1) != -1);
 	fcntl(STDIN_FILENO, F_SETFL, blocking);
 	fgetc(stdin);
 
 	tcsetattr(STDIN_FILENO, TCSANOW, &cooked);
 	printf("\x1b[?25h\x1b[?47l");
-
-	return 0;
 }
