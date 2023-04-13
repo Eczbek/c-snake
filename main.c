@@ -185,7 +185,7 @@ int main() {
 	fflush(stdout);
 
 	sleepMilliseconds(1000);
-	while (read(STDIN_FILENO, NULL, 1) != -1);
+	while (readCharacter());
 	fcntl(STDIN_FILENO, F_SETFL, blocking);
 	fgetc(stdin);
 
