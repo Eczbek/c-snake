@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -144,38 +145,36 @@ int main() {
 			++readCount;
 		struct Position newDirection = currentDirection;
 		for (int i = 0; i < readCount; ++i) {
-			switch (input[i]) {
-				case 'q':
-					gameOver = true;
-					break;
-				case '\x1b':
-					if ((i < (readCount - 2)) && (input[++i] == '['))
-						switch (input[++i]) {
-							case 'A':
-								if (!currentDirection.y || (bodySize < 2)) {
-									newDirection.x = 0;
-									newDirection.y = 1;
-								}
-								break;
-							case 'B':
-								if (!currentDirection.y || (bodySize < 2)) {
-									newDirection.x = 0;
-									newDirection.y = -1;
-								}
-								break;
-							case 'C':
-								if (!currentDirection.x || (bodySize < 2)) {
-									newDirection.x = 1;
-									newDirection.y = 0;
-								}
-								break;
-							case 'D':
-								if (!currentDirection.x || (bodySize < 2)) {
-									newDirection.x = -1;
-									newDirection.y = 0;
-								}
-						}
+			if ((char)tolower((unsigned char)input[i]) == 'q') {
+				gameOver = true;
+				break;
 			}
+			if ((input[i] == '\x1b') && (i < (readCount - 2)) && (input[++i] == '['))
+				switch (input[++i]) {
+					case 'A':
+						if (!currentDirection.y || (bodySize < 2)) {
+							newDirection.x = 0;
+							newDirection.y = 1;
+						}
+						break;
+					case 'B':
+						if (!currentDirection.y || (bodySize < 2)) {
+							newDirection.x = 0;
+							newDirection.y = -1;
+						}
+						break;
+					case 'C':
+						if (!currentDirection.x || (bodySize < 2)) {
+							newDirection.x = 1;
+							newDirection.y = 0;
+						}
+						break;
+					case 'D':
+						if (!currentDirection.x || (bodySize < 2)) {
+							newDirection.x = -1;
+							newDirection.y = 0;
+						}
+				}
 		}
 		currentDirection = newDirection;
 	}
