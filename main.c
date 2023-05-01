@@ -85,9 +85,11 @@ int main() {
 		255
 	};
 	struct Color canvas[gameSize.x][gameSize.y];
-	for (int x = 0; x < gameSize.x; ++x)
-		for (int y = 0; y < gameSize.y; ++y)
+	for (int x = 0; x < gameSize.x; ++x) {
+		for (int y = 0; y < gameSize.y; ++y) {
 			canvas[x][y] = azure;
+		}
+	}
 
 	struct termios cooked;
 	tcgetattr(STDIN_FILENO, &cooked);
@@ -112,9 +114,10 @@ int main() {
 			apple.x = getRandom(0, gameSize.x);
 			apple.y = getRandom(0, gameSize.y);
 			++bodySize;
-		} else
+		} else {
 			canvas[body[bodySize - 1].x][body[bodySize - 1].y] = azure;
-		
+		}
+
 		for (int i = bodySize - 1; i > 0; --i) {
 			const struct Position part = body[i] = body[i - 1];
 			if ((part.x == head.x) && (part.y == head.y)) {
@@ -123,32 +126,37 @@ int main() {
 			}
 			canvas[part.x][part.y] = lime;
 		}
-		if (gameOver)
+		if (gameOver) {
 			break;
+		}
 		body[0] = head;
 		canvas[head.x][head.y] = green;
 		canvas[apple.x][apple.y] = red;
 
 		printf("\x1b[2J\x1b[HScore: %i\n\r", bodySize - 1);
 		for (int y = gameSize.y; y--;) {
-			for (int x = 0; x < gameSize.x; ++x)
+			for (int x = 0; x < gameSize.x; ++x) {
 				printf("\x1b[48;2;%u;%u;%um  ", canvas[x][y].red, canvas[x][y].green, canvas[x][y].blue);
+			}
 			printf("\x1b[0m\n\r");
 		}
 		printf("Use arrow keys to move, press q to quit");
 		fflush(stdout);
-		if (bodySize == (gameSize.x * gameSize.y))
+		if (bodySize == (gameSize.x * gameSize.y)) {
 			break;
+		}
 
 		sleepMilliseconds(100);
 		struct Position newDirection = currentDirection;
 		while (true) {
 			const char input = readCharacter();
-			if ((char)tolower((unsigned char)input) == 'q')
+			if ((char)tolower((unsigned char)input) == 'q') {
 				gameOver = true;
-			if (!input || gameOver)
+			}
+			if (!input || gameOver) {
 				break;
-			if ((input == '\x1b') && (readCharacter() == '['))
+			}
+			if ((input == '\x1b') && (readCharacter() == '[')) {
 				switch (readCharacter()) {
 					case 'A':
 						if (!currentDirection.y || (bodySize < 2)) {
@@ -174,13 +182,15 @@ int main() {
 							newDirection.y = 0;
 						}
 				}
+			}
 		}
 		currentDirection = newDirection;
 	}
 
 	printf("\x1b[2K\x1b[0G");
-	if (!gameOver)
+	if (!gameOver) {
 		printf("You win! ");
+	}
 	printf("Press any key to exit");
 	fflush(stdout);
 
