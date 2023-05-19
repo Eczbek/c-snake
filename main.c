@@ -133,7 +133,7 @@ int main() {
 		canvas[head.x][head.y] = green;
 		canvas[apple.x][apple.y] = red;
 
-		printf("\x1b[2J\x1b[HScore: %i\n\r", bodySize - 1);
+		printf("\x1b[HScore: %i\n\r", bodySize - 1);
 		for (int y = gameSize.y; y--;) {
 			for (int x = 0; x < gameSize.x; ++x) {
 				printf("\x1b[48;2;%u;%u;%um  ", canvas[x][y].red, canvas[x][y].green, canvas[x][y].blue);
