@@ -135,7 +135,7 @@ int main() {
 	tcsetattr(STDIN_FILENO, TCSANOW, &raw_mode);
 	const int block_mode = fcntl(STDIN_FILENO, F_GETFL);
 	fcntl(STDIN_FILENO, F_SETFL, block_mode | O_NONBLOCK);
-	printf("\x1B[s\x1B[?47h\x1B[?25l\x1B[2J");
+	fputs("\x1B[s\x1B[?47h\x1B[?25l\x1B[2J", stdout);
 
 	for (size_t x = 0; x < game_size.x; ++x) {
 		for (size_t y = 0; y < game_size.y; ++y) {
@@ -148,14 +148,14 @@ int main() {
 
 	printf("\x1B[0m\x1B[%zuH\x1B[2K", game_size.y + 2);
 	if (win) {
-		printf("You win! ");
+		fputs("You win! ", stdout);
 	}
-	printf("Press any key to exit");
+	fputs("Press any key to exit", stdout);
 	fflush(stdout);
 	sleep_ms(500);
 	while (getchar() > 0);
 	fcntl(STDIN_FILENO, F_SETFL, block_mode);
 	getchar();
 	tcsetattr(STDIN_FILENO, TCSANOW, &cooked_mode);
-	printf("\x1B[?25h\x1B[?47l\x1B[u");
+	fputs("\x1B[?25h\x1B[?47l\x1B[u", stdout);
 }
