@@ -1,204 +1,163 @@
+#define _POSIX_C_SOURCE 199309
+
 #include <ctype.h>
 #include <fcntl.h>
-#include <stdbool.h>
-#include <stdio.h>
+#include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
 
-// Declare `nanosleep` to avoid implicit declaration warning
-int nanosleep(const struct timespec*, struct timespec*);
+typedef struct {
+	size_t x;
+	size_t y;
+} pos_t;
 
-struct Position {
-	int x;
-	int y;
-};
+constexpr pos_t game_size = { 20, 20 };
+constexpr size_t snake_max = game_size.x * game_size.y;
 
-struct Color {
-	uint8_t red;
-	uint8_t green;
-	uint8_t blue;
-};
-
-int getRandom(const int min, const int max) {
-	return rand() % (max - min) - min;
+pos_t rand_pos() {
+	return (pos_t) { (size_t)rand() % game_size.x, (size_t)rand() % game_size.y };
 }
 
-void sleepMilliseconds(const int milliseconds) {
-	if (milliseconds > 0) {
+typedef struct {
+	uint8_t r;
+	uint8_t g;
+	uint8_t b;
+} color_t;
+
+constexpr color_t red = { 255, 0, 0 };
+constexpr color_t green = { 0, 255, 0 };
+constexpr color_t azure = { 0, 127, 255 };
+
+void set_color_at(color_t color, pos_t pos) {
+	printf("\x1B[%zu;%zuH", pos.y + 2, pos.x * 2 + 1);
+	printf("\x1B[48;2;%u;%u;%um", color.r, color.g, color.b);
+	printf("  ");
+}
+
+void sleep_ms(int ms) {
+	if (ms > 0) {
 		struct timespec time;
-		time.tv_sec = milliseconds / 1000;
-		time.tv_nsec = milliseconds % 1000 * 1000000;
-		nanosleep(&time, NULL);
+		time.tv_sec = ms / 1000;
+		time.tv_nsec = ms % 1000 * 1000000;
+		nanosleep(&time, nullptr);
 	}
 }
 
-char readCharacter() {
-	char input;
-	return (read(STDIN_FILENO, &input, 1) > 0) ? input : 0;
-}
+bool run() {
+	srand((unsigned int)time(nullptr));
 
-int main() {
-	srand(time(NULL));
+	pos_t apple = rand_pos();
 
-	const struct Position gameSize = {
-		20,
-		20
-	};
+	pos_t snake_body[snake_max];
+	pos_t snake_head = rand_pos();
+	size_t snake_start = 0;
+	size_t snake_end = 0;
+	size_t score = 0;
+	pos_t snake_direction = { 0, 0 };
 
-	struct Position apple = {
-		getRandom(0, gameSize.x),
-		getRandom(0, gameSize.y)
-	};
-
-	int bodySize = 1;
-	struct Position body[gameSize.x * gameSize.y];
-	body[0].x = getRandom(0, gameSize.x);
-	body[0].y = getRandom(0, gameSize.y);
-
-	struct Position currentDirection = {
-		0,
-		0
-	};
-
-	const struct Color red = {
-		255,
-		0,
-		0
-	};
-	const struct Color lime = {
-		127,
-		255,
-		0
-	};
-	const struct Color green = {
-		0,
-		255,
-		0
-	};
-	const struct Color azure = {
-		0,
-		127,
-		255
-	};
-	struct Color canvas[gameSize.x][gameSize.y];
-	for (int x = 0; x < gameSize.x; ++x) {
-		for (int y = 0; y < gameSize.y; ++y) {
-			canvas[x][y] = azure;
+	while (true) {
+		printf("\x1B[0m\x1B[HScore: %zu", score);
+		if (score >= snake_max) {
+			return true;
 		}
-	}
 
-	struct termios cooked;
-	tcgetattr(STDIN_FILENO, &cooked);
-	struct termios raw = cooked;
-	raw.c_iflag &= ~(ICRNL | IXON);
-	raw.c_lflag &= ~(ICANON | ECHO | IEXTEN | ISIG);
-	raw.c_oflag &= ~(OPOST);
-	tcsetattr(STDIN_FILENO, TCSANOW, &raw);
-	const int blocking = fcntl(STDIN_FILENO, F_GETFL);
-	fcntl(STDIN_FILENO, F_SETFL, blocking | O_NONBLOCK);
-	printf("\x1b[?47h\x1b[?25l");
-
-	bool gameOver = false;
-	while (!gameOver) {
-		const struct Position head = {
-			(body[0].x + currentDirection.x + gameSize.x) % gameSize.x,
-			(body[0].y + currentDirection.y + gameSize.y) % gameSize.y
-		};
-
-		if ((head.x == apple.x) && (head.y == apple.y)) {
-			canvas[apple.x][apple.y] = azure;
-			apple.x = getRandom(0, gameSize.x);
-			apple.y = getRandom(0, gameSize.y);
-			++bodySize;
+		set_color_at(green, snake_head);
+		snake_head = (pos_t) { (snake_head.x + snake_direction.x) % game_size.x, (snake_head.y + snake_direction.y) % game_size.y };
+		snake_body[snake_start = (snake_start + 1) % snake_max] = snake_head;
+		if ((snake_head.x == apple.x) && (snake_head.y == apple.y)) {
+			++score;
+			apple = rand_pos();
 		} else {
-			canvas[body[bodySize - 1].x][body[bodySize - 1].y] = azure;
+			const pos_t snake_tail = snake_body[snake_end++];
+			snake_end %= snake_max;
+			set_color_at(azure, snake_tail);
+		}
+		set_color_at(red, apple);
+		set_color_at(green, snake_head);
+
+		for (size_t i = 0; i < score; ++i) {
+			const pos_t snake_part = snake_body[(snake_end + i) % snake_max];
+			if ((snake_head.x == snake_part.x) && (snake_head.y == snake_part.y)) {
+				return false;
+			}
 		}
 
-		for (int i = bodySize - 1; i > 0; --i) {
-			const struct Position part = body[i] = body[i - 1];
-			if ((part.x == head.x) && (part.y == head.y)) {
-				gameOver = true;
-				break;
-			}
-			canvas[part.x][part.y] = lime;
-		}
-		if (gameOver) {
-			break;
-		}
-		body[0] = head;
-		canvas[head.x][head.y] = green;
-		canvas[apple.x][apple.y] = red;
-
-		printf("\x1b[HScore: %i\n\r", bodySize - 1);
-		for (int y = gameSize.y; y--;) {
-			for (int x = 0; x < gameSize.x; ++x) {
-				printf("\x1b[48;2;%u;%u;%um  ", canvas[x][y].red, canvas[x][y].green, canvas[x][y].blue);
-			}
-			printf("\x1b[0m\n\r");
-		}
-		printf("Use arrow keys to move, press q to quit");
 		fflush(stdout);
-		if (bodySize == (gameSize.x * gameSize.y)) {
-			break;
-		}
+		sleep_ms(100);
 
-		sleepMilliseconds(100);
-		struct Position newDirection = currentDirection;
+		const bool can_turn_x = !snake_direction.x || (score < 1);
+		const bool can_turn_y = !snake_direction.y || (score < 1);
 		while (true) {
-			const char input = readCharacter();
-			if ((char)tolower((unsigned char)input) == 'q') {
-				gameOver = true;
+			const int input = getchar();
+			if (toupper(input) == 'Q') {
+				return false;
 			}
-			if (!input || gameOver) {
+			if (input < 1) {
 				break;
 			}
-			if ((input == '\x1b') && (readCharacter() == '[')) {
-				switch (readCharacter()) {
-					case 'A':
-						if (!currentDirection.y || (bodySize < 2)) {
-							newDirection.x = 0;
-							newDirection.y = 1;
-						}
-						break;
-					case 'B':
-						if (!currentDirection.y || (bodySize < 2)) {
-							newDirection.x = 0;
-							newDirection.y = -1;
-						}
-						break;
-					case 'C':
-						if (!currentDirection.x || (bodySize < 2)) {
-							newDirection.x = 1;
-							newDirection.y = 0;
-						}
-						break;
-					case 'D':
-						if (!currentDirection.x || (bodySize < 2)) {
-							newDirection.x = -1;
-							newDirection.y = 0;
-						}
+			if ((input == '\x1B') && (getchar() == '[')) {
+				switch (getchar()) {
+				case 'A':
+					if (can_turn_y) {
+						snake_direction = (pos_t) { 0, game_size.y - 1 };
+					}
+					break;
+				case 'B':
+					if (can_turn_y) {
+						snake_direction = (pos_t) { 0, 1 };
+					}
+					break;
+				case 'C':
+					if (can_turn_x) {
+						snake_direction = (pos_t) { 1, 0 };
+					}
+					break;
+				case 'D':
+					if (can_turn_x) {
+						snake_direction = (pos_t) { game_size.x - 1, 0 };
+					}
 				}
 			}
 		}
-		currentDirection = newDirection;
 	}
+}
 
-	printf("\x1b[2K\x1b[0G");
-	if (!gameOver) {
+int main() {
+	struct termios cooked_mode;
+	tcgetattr(STDIN_FILENO, &cooked_mode);
+	struct termios raw_mode = cooked_mode;
+	raw_mode.c_iflag &= (tcflag_t)~(ICRNL | IXON);
+	raw_mode.c_lflag &= (tcflag_t)~(ICANON | ECHO | IEXTEN | ISIG);
+	raw_mode.c_oflag &= (tcflag_t)~(OPOST);
+	tcsetattr(STDIN_FILENO, TCSANOW, &raw_mode);
+	const int block_mode = fcntl(STDIN_FILENO, F_GETFL);
+	fcntl(STDIN_FILENO, F_SETFL, block_mode | O_NONBLOCK);
+	printf("\x1B[s\x1B[?47h\x1B[?25l\x1B[2J");
+
+	for (size_t x = 0; x < game_size.x; ++x) {
+		for (size_t y = 0; y < game_size.y; ++y) {
+			set_color_at(azure, (pos_t) { x, y });
+		}
+	}
+	printf("\x1B[0m\x1B[%zuHUse arrow keys to move, press Q to quit", game_size.y + 2);
+
+	const bool win = run();
+
+	printf("\x1B[0m\x1B[%zuH\x1B[2K", game_size.y + 2);
+	if (win) {
 		printf("You win! ");
 	}
 	printf("Press any key to exit");
 	fflush(stdout);
-
-	sleepMilliseconds(1000);
-	while (readCharacter());
-	fcntl(STDIN_FILENO, F_SETFL, blocking);
-	fgetc(stdin);
-
-	tcsetattr(STDIN_FILENO, TCSANOW, &cooked);
-	printf("\x1b[?25h\x1b[?47l");
+	sleep_ms(500);
+	while (getchar() > 0);
+	fcntl(STDIN_FILENO, F_SETFL, block_mode);
+	getchar();
+	tcsetattr(STDIN_FILENO, TCSANOW, &cooked_mode);
+	printf("\x1B[?25h\x1B[?47l\x1B[u");
 }
