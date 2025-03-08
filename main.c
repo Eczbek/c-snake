@@ -34,9 +34,7 @@ constexpr color_t green = { 0, 255, 0 };
 constexpr color_t azure = { 0, 127, 255 };
 
 void set_color_at(color_t color, pos_t pos) {
-	printf("\x1B[%zu;%zuH", pos.y + 2, pos.x * 2 + 1);
-	printf("\x1B[48;2;%u;%u;%um", color.r, color.g, color.b);
-	printf("  ");
+	printf("\x1B[%zu;%zuH\x1B[48;2;%u;%u;%um  ", pos.y + 2, pos.x * 2 + 1, color.r, color.g, color.b);
 }
 
 void sleep_ms(int ms) {
