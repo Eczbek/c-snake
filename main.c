@@ -12,8 +12,7 @@
 #include <unistd.h>
 
 void sleep_ms(int ms) {
-	struct timespec time = { ms / 1000, ms % 1000 * 1'000'000 };
-	nanosleep(&time, nullptr);
+	nanosleep(&((struct timespec) { ms / 1000, ms % 1000 * 1'000'000 }), nullptr);
 }
 
 typedef struct {
