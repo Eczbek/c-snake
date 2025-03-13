@@ -125,12 +125,12 @@ int main() {
 	tcsetattr(STDIN_FILENO, TCSANOW, &raw_mode);
 	const int block_mode = fcntl(STDIN_FILENO, F_GETFL);
 	fcntl(STDIN_FILENO, F_SETFL, block_mode | O_NONBLOCK);
-	fputs("\x1B[s\x1B[?47h\x1B[?25l\x1B[2J", stdout);
-
-	for (int x = 0; x < game_size.x; ++x) {
-		for (int y = 0; y < game_size.y; ++y) {
-			set_color_at((pos_t) { x, y }, 0x007FFF);
+	fputs("\x1B[s\x1B[?47h\x1B[?25l\x1B[2J\x1B[2H\x1B[48;2;0;127;255m", stdout);
+	for (int y = 0; y < game_size.y; ++y) {
+		for (int x = 0; x < game_size.x; ++x) {
+			fputs("  ", stdout);
 		}
+		fputs("\v\r", stdout);
 	}
 	printf("\x1B[0m\x1B[%iHUse arrow keys to move, press Q to quit", game_size.y + 2);
 
